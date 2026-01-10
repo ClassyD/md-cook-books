@@ -1,34 +1,18 @@
-# {{PROJECT_NAME}} – Mobile Project Initialisation (Expo / React Native)
-
-_Last updated: {{DATE}}_
+Mobile Project Initialisation (Expo / React Native)
 
 ---
 
-## 1. Project Overview
+## Prerequisites
 
-**Elevator pitch**  
-{{SHORT_DESCRIPTION}}
-
-**Target platforms**  
-- iOS: {{MIN_IOS_VERSION}}+
-- Android: {{MIN_ANDROID_VERSION}}+
-
-**Primary users**  
-- {{USER_TYPE_1}}
-- {{USER_TYPE_2}}
-
-**Core problems this solves**  
-- {{PROBLEM_1}}
-- {{PROBLEM_2}}
-
-**v1 outcomes**  
-1. {{OUTCOME_1}}
-2. {{OUTCOME_2}}
-3. {{OUTCOME_3}}
+- **Always use TypeScript** – All projects must be TypeScript with `strict: true`
+- **Use latest versions** – Always use the latest stable versions of all tools, frameworks, and dependencies unless a specific version is explicitly mentioned
+- **Check compatibility** – Ensure compatibility between major dependencies (e.g., React Native/Expo, React Query with its React version) when determining versions
+- **LLM responsibility** – The LLM should determine the latest available versions and appropriate installation commands at the time of project initialization
+- **Code Writing Rules** – The LLM must ensure the code-writing-rules.md file is available as a Cursor rule. See Section 11 for setup instructions.
 
 ---
 
-## 2. Tech Stack & Architecture Principles
+## 1. Tech Stack & Architecture Principles
 
 ### Framework & Runtime
 
@@ -74,7 +58,7 @@ _Last updated: {{DATE}}_
 
 ---
 
-## 3. Folder Structure (Mobile)
+## 2. Folder Structure (Mobile)
 
 ```txt
 /
@@ -128,7 +112,7 @@ _Last updated: {{DATE}}_
 
 ---
 
-## 4. Folder Rules & Conventions
+## 3. Folder Rules & Conventions
 
 ### `app/` (expo-router only)
 
@@ -168,7 +152,7 @@ Organised static assets.
 
 ---
 
-## 5. State Management & Data Fetching
+## 4. State Management & Data Fetching
 
 ### React Query (default server-state engine)
 
@@ -188,7 +172,7 @@ Use sparingly for:
 
 ---
 
-## 6. Backend Integration
+## 5. Backend Integration
 
 ### Firebase (`core/firebase`)
 
@@ -213,7 +197,7 @@ Rules:
 
 ---
 
-## 7. Environment Variables
+## 6. Environment Variables
 
 `.env`, `.env.development`, `.env.production`
 
@@ -229,11 +213,16 @@ Rule:
 
 ---
 
-## 8. Testing Strategy
+## 7. Testing Strategy
 
 ### Unit/Integration (Jest + RNTL)
 
 - Tests colocated with code: `file.test.ts` or `file.test.tsx`
+- **Test file location**: Place test files next to the source file they test
+  - `features/home/hooks/useHomeScreen.ts` → `features/home/hooks/useHomeScreen.test.ts`
+  - `features/home/components/HomeScreenView.tsx` → `features/home/components/HomeScreenView.test.tsx`
+  - `core/api/user.ts` → `core/api/user.test.ts`
+  - `features/auth/utils/validation.ts` → `features/auth/utils/validation.test.ts`
 - Shared helpers in `tests/utils`
 - Expect tests for:
   - feature hooks  
@@ -258,44 +247,185 @@ Rules:
 
 ---
 
-## 9. AI Collaboration Guide
+## 8. Development Guide: Components & Screen Patterns
 
-When working with AI, always include:
+### Screen-Level Hook Pattern
 
-### Context
+**Rule**: All business logic for a screen must live in a dedicated hook. The UI component should be primarily presentational.
 
-- “Expo + React Native + TS project”
-- “expo-router navigation”
-- “Architecture: core for infra, features for domain modules”
-- “React Query for data fetching”
-- “Firebase + custom API combo”
+#### Pattern Structure
 
-### Goal
+Each screen follows this pattern:
 
-Clear description of what you want to build/change.
+```typescript
+// app/home.tsx (expo-router route)
+import { useHomeScreen } from '@/features/home/hooks/useHomeScreen';
 
-### Relevant files & paths
+export default function HomeScreen() {
+  const homeScreen = useHomeScreen();
+  
+  return <HomeScreenView {...homeScreen} />;
+}
+```
 
-Include only necessary files to reduce ambiguity.
+```typescript
+// features/home/hooks/useHomeScreen.ts
+export function useHomeScreen() {
+  // All business logic lives here
+  const { data, isLoading } = useHomeData();
+  const { handleRefresh, handleItemPress } = useHomeActions();
+  
+  // Can compose other hooks
+  const navigation = useNavigation();
+  const analytics = useAnalytics();
+  
+  return {
+    // Expose only what the UI needs
+    data,
+    isLoading,
+    onRefresh: handleRefresh,
+    onItemPress: handleItemPress,
+  };
+}
+```
 
-### Constraints
+```typescript
+// features/home/components/HomeScreenView.tsx
+interface HomeScreenViewProps {
+  data: HomeData[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onItemPress: (id: string) => void;
+}
 
-- Follow folder architecture  
-- Use TypeScript  
-- Use React Query  
-- Use core/firebase and core/api wrappers  
-- Add/update colocated Jest tests  
-- Update Maestro flow if main path changes  
+export function HomeScreenView({ data, isLoading, onRefresh, onItemPress }: HomeScreenViewProps) {
+  // Pure presentation logic only
+  // No business logic, no data fetching, no side effects
+  return (
+    <ScrollView refreshControl={<RefreshControl onRefresh={onRefresh} />}>
+      {isLoading ? <LoadingSpinner /> : <DataList data={data} onItemPress={onItemPress} />}
+    </ScrollView>
+  );
+}
+```
 
-### Required tests
+#### Rules
 
-Always request:
+1. **Screen hook naming**: `use<ScreenName>Screen` (e.g., `useHomeScreen`, `useProfileScreen`)
+2. **Hook location**: Screen hooks live in `features/<feature>/hooks/` or `app/<screen>/hooks/` if screen-specific
+3. **Business logic**: All data fetching, state management, side effects, and business rules go in the hook
+4. **UI components**: Should be pure presentational components that receive props and render
+5. **Hook composition**: Screen hooks can compose other hooks (React Query hooks, feature hooks, utility hooks)
+6. **Exposed interface**: The hook should expose a clean, typed interface of only what the UI needs
 
-> “Include colocated Jest tests. If this affects core user flows, also update/create a Maestro flow.”
+#### What Goes Where
+
+**In the Hook (`useHomeScreen`):**
+- ✅ Data fetching (React Query hooks)
+- ✅ State management (local state, derived state)
+- ✅ Event handlers with business logic
+- ✅ Side effects (navigation, analytics, etc.)
+- ✅ Data transformations
+- ✅ Validation logic
+- ✅ Error handling
+
+**In the UI Component (`HomeScreenView`):**
+- ✅ Rendering logic
+- ✅ Conditional rendering based on props
+- ✅ Layout and styling
+- ✅ Simple prop forwarding to child components
+- ❌ No data fetching
+- ❌ No business logic
+- ❌ No side effects (except UI-only effects like animations)
+
+### Component Writing Guidelines
+
+#### Component Reusability Principle
+
+**Default to shared components**: Always check if a component already exists in `components/ui/` or `components/common/` before building a new one.
+
+**Shared components for common UI:**
+- ✅ Buttons, Cards, Inputs, Lists, Modals, etc. → `components/ui/`
+- ✅ Multi-feature shared components (e.g., Header, Footer, Navigation) → `components/common/`
+- ✅ These should be built once and reused across all features for consistency
+
+**Feature-specific components only when:**
+- ❌ The component contains business logic specific to one feature
+- ❌ The component is so unique to a feature that it won't be reused elsewhere
+- ❌ The component requires feature-specific hooks or data structures that can't be abstracted
+
+**Decision process:**
+1. Need a Button? → Check `components/ui/Button.tsx` first
+2. Need a Card? → Check `components/ui/Card.tsx` first
+3. Need a ProductCard? → If it's just a styled card, extend `components/ui/Card.tsx`
+4. Need a ProductCard with product-specific business logic? → `features/products/components/ProductCard.tsx`
+
+**Rule**: When in doubt, start with a shared component. It's easier to move a component from `features/` to `components/` later than to duplicate and maintain multiple versions.
+
+#### Shared Components (`components/ui` and `components/common`)
+
+- **Pure presentational components**
+- **Reusable across features**
+- **Well-typed props interfaces**
+- **No feature-specific logic**
+- **Can accept render props or children for flexibility**
+
+#### Feature Components (`features/<feature>/components`)
+
+- **Feature-specific UI components**
+- **Can use feature hooks internally if needed**
+- **Still prefer presentational when possible**
+- **Can be composed by screen-level hooks**
+
+#### Example: Reusable Component
+
+```typescript
+// components/ui/Button.tsx
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+}
+
+export function Button({ title, onPress, variant = 'primary', disabled }: ButtonProps) {
+  return (
+    <Pressable onPress={onPress} disabled={disabled} style={[styles.base, styles[variant]]}>
+      <Text>{title}</Text>
+    </Pressable>
+  );
+}
+```
+
+### Testing Screen Patterns
+
+When testing screens:
+
+1. **Test the hook** (`useHomeScreen.test.ts`) – Test all business logic
+2. **Test the view component** (`HomeScreenView.test.tsx`) – Test rendering and prop handling
+3. **Test integration** – Test the screen route renders correctly
+
+```typescript
+// useHomeScreen.test.ts
+describe('useHomeScreen', () => {
+  it('fetches and returns home data', () => {
+    const { result } = renderHook(() => useHomeScreen());
+    expect(result.current.data).toBeDefined();
+  });
+  
+  it('handles refresh correctly', () => {
+    const { result } = renderHook(() => useHomeScreen());
+    act(() => {
+      result.current.onRefresh();
+    });
+    // Assert refresh behavior
+  });
+});
+```
 
 ---
 
-## 10. Quality Gates (CI/CD)
+## 9. Quality Gates (CI/CD)
 
 - Lint must pass  
 - Type-check must pass  
@@ -305,7 +435,7 @@ Always request:
 
 ---
 
-## 11. New Mobile Project Setup Checklist
+## 10. New Mobile Project Setup Checklist
 
 - [ ] Init Expo project with TypeScript  
 - [ ] Install expo-router and configure routes  
@@ -320,3 +450,57 @@ Always request:
 - [ ] Commit `project-initialisation.mobile.md`  
 
 ---
+
+## 11. Optional Tools & LLM Instructions
+
+For any tool, library, or setup step described as **optional** in this document (e.g., NativeWind, Zustand/Redux, utility-first styling), the LLM should:
+
+1. **Ask the user** whether the optional tool should be added or initialized before proceeding
+2. **Not assume** that optional tools should be included by default
+3. **Wait for confirmation** before installing dependencies or creating configuration files for optional tools
+
+Examples of optional tools mentioned in this document:
+- NativeWind or utility-first styling (Section 1)
+- Zustand or Redux Toolkit for global state (Section 1, Section 4)
+- Zustand/Redux setup in `core/state/` (Section 1, Section 2)
+
+### Code Writing Rules File Setup
+
+**Rule**: The LLM must ensure that the code-writing-rules.md file is available as a Cursor rule at `.cursor/rules/RULE.md`. This file contains essential guidelines for:
+- Component reusability principles
+- Screen-level hook patterns
+- useEffect usage rules
+- Test file placement
+- TypeScript guidelines
+- Code organization
+
+**Setup Process:**
+
+1. **Check if the rule exists**: First, check if `.cursor/rules/RULE.md` already exists in the project
+2. **If it doesn't exist, create it**: The LLM should create the rule file directly in `.cursor/rules/`:
+   ```
+   .cursor/rules/
+     RULE.md
+   ```
+3. **Fetch the content**: Attempt to fetch the content from the GitHub repository:
+   - **GitHub Repository**: `https://github.com/ClassyD/md-cook-books`
+   - **Raw File URL**: `https://raw.githubusercontent.com/ClassyD/md-cook-books/main/engineering/code-writing-rules.md`
+4. **If GitHub access fails**: If the LLM cannot access the GitHub URL or fetch the file:
+   - **Ask the user** to provide the code-writing-rules.md file
+   - Request either:
+     - The raw content of the file
+     - Or ask the user to manually add it to `.cursor/rules/RULE.md`
+5. **Create the RULE.md file**: Once the content is available, create the file with:
+   - Frontmatter metadata (optional, can be added later via Cursor settings):
+     ```markdown
+     ---
+     description: "Code writing rules and guidelines for React/React Native development"
+     alwaysApply: true
+     ---
+     ```
+   - The full content from the code-writing-rules.md file
+
+**Reference**: [Cursor Rules Documentation](https://cursor.com/docs/context/rules#rule-folder-structure)
+
+---
+

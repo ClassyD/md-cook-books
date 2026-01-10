@@ -1,32 +1,20 @@
-# {{PROJECT_NAME}} – Web Project Initialisation (Next.js)
-
-_Last updated: {{DATE}}_
+Web Project Initialisation (Next.js)
 
 ---
 
-## 1. Project Overview
+## Prerequisites
 
-**Elevator pitch**  
-{{SHORT_DESCRIPTION}}
-
-**Primary users**  
-- {{USER_TYPE_1}}
-- {{USER_TYPE_2}}
-
-**Problems this solves**  
-- {{PROBLEM_1}}
-- {{PROBLEM_2}}
-
-**v1 outcomes**  
-1. {{OUTCOME_1}}
-2. {{OUTCOME_2}}
-3. {{OUTCOME_3}}
+- **Always use TypeScript** – All projects must be TypeScript with `strict: true`
+- **Use latest versions** – Always use the latest stable versions of all tools, frameworks, and dependencies unless a specific version is explicitly mentioned
+- **Check compatibility** – Ensure compatibility between major dependencies (e.g., Next.js/React, React Query with its React version) when determining versions
+- **LLM responsibility** – The LLM should determine the latest available versions and appropriate installation commands at the time of project initialization
+- **Code Writing Rules** – The LLM must ensure the code-writing-rules.md file is available as a Cursor rule. See Section 11 for setup instructions.
 
 ---
 
-## 2. Tech Stack & Architecture Principles
+## 1. Tech Stack & Architecture Principles
 
-### Framework
+### Framework & Runtime
 
 - Next.js (App Router)
 - TypeScript (`strict: true`)
@@ -36,31 +24,33 @@ _Last updated: {{DATE}}_
 
 - Tailwind CSS
 - shadcn/ui
-- Shared UI under `components/ui`, non-feature shared UI under `components/common`
+- Shared UI under `components/ui`
+- Non-feature shared UI under `components/common`
 
 ### State & Data Layer
 
 - Server state: **React Query**
-- Global app/UI state: **Zustand** (if needed)
-- Feature-level state: colocated inside feature (`features/<feature>/hooks`)
+- Global state: none by default; add **Zustand** only when needed
+- Feature-level state lives inside `features/<feature>/hooks`
 
-### API & Backend Services
+### Backend & Services
 
-- Firebase (Auth, Firestore, Storage) wrapped in `core/firebase`
-- HTTP/GraphQL clients in `core/api`
+- Firebase (Auth, Firestore, Storage) via `core/firebase`
+- Custom REST/GraphQL API via `core/api`
 - Server Actions:
   - Feature-specific → `features/<feature>/serverActions`
   - Shared → `serverActions/`
+- All async data flows through React Query
 
 ### Platform / App-Wide Integrations (`core/`)
 
-- Firebase
+- Firebase wrappers
+- API client
 - React Query setup
-- Zustand store setup
+- Zustand setup (optional)
 - Analytics / tracking
 - i18n
-- Typed environment variables
-- API clients
+- Typed env variables
 
 ### Testing
 
@@ -68,29 +58,28 @@ _Last updated: {{DATE}}_
 - E2E tests: **Playwright**
 - Unit tests colocated next to code
 - Shared test utils → `/tests`
-- Only thin smoke/critical path tests for e2e
 
 ---
 
-## 3. Folder Structure (Web)
+## 2. Folder Structure (Web)
 
 ```txt
 /
   public/                 # static assets
-  app/                    # Next.js routes only (no business logic)
+  app/                    # Next.js routes only
 
-  core/                   # platform-level integrations → the "infrastructure layer"
-    state/                # Zustand store setup
+  core/                   # platform-level integrations
     query/                # React Query setup
-    api/                  # API clients (REST/GraphQL)
-    firebase/             # Firebase init + service wrappers
-    tracking/             # analytics, logging
+    state/                # Zustand (optional)
+    api/                  # API clients
+    firebase/             # Firebase wrappers
+    tracking/             # analytics
     i18n/                 # localisation
-    env/                  # typed env variable access
+    env/                  # typed env helpers
 
   components/             # shared UI components
-    ui/                   # shadcn primitives
-    common/               # non-feature shared components
+    ui/
+    common/
 
   features/               # self-contained feature modules
     exampleFeature/
@@ -99,20 +88,18 @@ _Last updated: {{DATE}}_
       serverActions/
       utils/
       types.ts
-      index.ts            # public API of the feature
+      index.ts
 
   serverActions/          # cross-feature shared server actions
     auth/
     users/
     utils/
 
-  types/                  # shared domain types/models
-    index.ts
+  types/                  # shared domain types
 
   tests/                  # Jest utilities, fixtures, mocks
     setup/
       jest.setup.ts
-      msw.server.ts       # optional
     fixtures/
       user.ts
     utils/
@@ -127,297 +114,408 @@ _Last updated: {{DATE}}_
 
 ---
 
-## 4. Folder Rules & Conventions
+## 3. Folder Rules & Conventions
 
-### `app/` (ROUTES ONLY)
+### `app/` (Next.js routes only)
 
-- No business logic.
-- No API calls.
-- Only:
-  - Layouts
-  - Pages
-  - Route handlers
-  - Providers (if needed)
+- No business logic
+- Minimal UI logic
+- Routes delegate to feature components
 
----
+### `core/` – Infrastructure Layer
 
-### `core/` – THE INFRASTRUCTURE LAYER
-
-Purpose: centralise integrations and cross-app concerns.
-
-```txt
-core/
-  state/        → Zustand store
-  query/        → React Query config + provider
-  firebase/     → Firebase init + wrappers
-  api/          → fetch/axios/GraphQL clients
-  tracking/     → analytics wrappers
-  i18n/         → localisation
-  env/          → typed env helpers
-```
-
-**Rules**
-
-- No React components here.
-- No feature logic here.
-- Everything must be reusable across the entire app.
-
----
+- Only platform-level concerns
+- No UI components
+- No feature-specific code
 
 ### `components/`
 
-```txt
-components/
-  ui/           → shadcn (pure UI primitives)
-  common/       → shared reusable UI pieces
-```
-
-**Rules**
-
-- Must not import from `features/*`.
-
----
+- `ui/` → primitives
+- `common/` → shared multi-feature UI
+- Cannot import from `features/*`
 
 ### `features/`
 
-```txt
-features/
-  <featureName>/
-    components/       # UI for this feature only
-    hooks/            # feature-specific logic (React Query hooks)
-    serverActions/    # feature-only server actions
-    utils/            # feature-only helper functions
-    types.ts          # feature-only types
-    index.ts          # controlled public API
-```
+A feature contains everything related to one domain area.
 
-**Rules**
+- UI
+- Hooks
+- Server Actions
+- Utils
+- Types
+- Public API (`index.ts`)
 
-- A feature owns its own UI, logic, hooks, types, and server actions.
-- If more than one feature needs the same server action → move that action to `/serverActions`.
+### `serverActions/`
 
----
-
-### `serverActions/` – shared server actions
-
-- Used for cross-feature logic (auth, users, generic utilities).
-- Must not import UI.
-- Should import Firebase via `core/firebase`.
-
----
+- Cross-feature shared server actions
+- Must not import UI
+- Should import Firebase via `core/firebase`
 
 ### `types/`
 
-- Domain-level types shared across features (e.g. `User`, `Uuid`, `PaginatedResult`).
-- Feature-specific types stay in the feature folder.
+- Shared domain models (`User`, `AuthToken`, etc.)
+
+### `public/`
+
+Organised static assets.
 
 ---
 
-## 5. State Management & Data Fetching
+## 4. State Management & Data Fetching
 
-### Global state – Zustand (`core/state`)
-
-- Only used for:
-  - session / auth state
-  - UI-level global toggles (theme, drawer, modals)
-  - device-specific flags if necessary
-
-### Server state – React Query (`core/query`)
+### React Query (default server-state engine)
 
 Pattern:
 
-1. Low-level fetchers live in `core/api`.
-2. Feature-level hooks wrap the fetchers:
-   - `features/<feature>/hooks/useSomething.ts`
-3. Caching & invalidation use feature-defined key factories.
+1. `core/api` defines raw API/fetch functions  
+2. `features/<feature>/hooks` exposes React Query hooks  
+3. Query keys are defined in each feature  
 
-**Example**
+### Optional global state (Zustand)
 
-```ts
-// features/user/hooks/useUserQuery.ts
-import { useQuery } from "@tanstack/react-query";
-import { getUser } from "@/core/api/user";
+Use sparingly for:
 
-export const userKeys = {
-  detail: (id: string) => ["user", id] as const,
-};
-
-export function useUserQuery(id: string) {
-  return useQuery({
-    queryKey: userKeys.detail(id),
-    queryFn: () => getUser(id),
-  });
-}
-```
+- session state
+- global UI (theme/modals/etc.)
+- device capability flags
 
 ---
 
-## 6. Firebase Integration
+## 5. Backend Integration
 
-Location:
+### Firebase (`core/firebase`)
 
 ```txt
 core/firebase/
-  client.ts       # initialises the app (singleton)
-  auth.ts         # thin wrappers for auth
-  db.ts           # Firestore helpers
-  storage.ts      # Storage helpers
+  client.ts
+  auth.ts
+  db.ts
+  storage.ts
 ```
 
-**Rules**
+Rules:
 
-- Only core/firebase imports from Firebase SDK.
-- Features must NOT import Firebase directly.
-- For server actions, use the wrappers.
+- Only this folder imports Firebase SDK
+- Features must use these wrappers, not Firebase directly
+
+### Custom API (`core/api`)
+
+- Base client
+- Endpoints grouped by domain (user, auth, etc.)
+- Features use API functions via React Query hooks
+
+### Server Actions
+
+- Feature-specific → `features/<feature>/serverActions`
+- Shared → `serverActions/`
+- Must use `core/firebase` wrappers, not Firebase directly
 
 ---
 
-## 7. Environment Variables
+## 6. Environment Variables
 
-Files:
-
-```txt
-.env.local
-.env.development.local
-.env.production.local
-```
+`.env.local`, `.env.development.local`, `.env.production.local`
 
 Typed access via:
 
 ```txt
-core/env/
-  index.ts
+core/env/index.ts
 ```
 
-**Rule**  
-Never use `process.env` directly outside `core/env`.
+Rule:
+
+- Never use `process.env` directly outside core/env
 
 ---
 
-## 8. Testing Strategy
+## 7. Testing Strategy
 
-### 8.1 Unit & Integration Tests (Jest)
+### Unit/Integration (Jest + RTL)
 
-Tools:
+- Tests colocated with code: `file.test.ts` or `file.test.tsx`
+- **Test file location**: Place test files next to the source file they test
+  - `features/home/hooks/useHomePage.ts` → `features/home/hooks/useHomePage.test.ts`
+  - `features/home/components/HomePageView.tsx` → `features/home/components/HomePageView.test.tsx`
+  - `core/api/user.ts` → `core/api/user.test.ts`
+  - `features/auth/utils/validation.ts` → `features/auth/utils/validation.test.ts`
+- Shared helpers in `tests/utils`
+- Expect tests for:
+  - feature hooks  
+  - feature utils  
+  - core/api functions  
+  - pages with logic  
 
-- Jest
-- @testing-library/react
-- @testing-library/dom
-- MSW (optional but recommended for mocking API/Firebase wrappers)
-
-**Location**
-
-- Tests colocated with code:
-  - `file.ts` → `file.test.ts`
-  - `file.tsx` → `file.test.tsx`
-
-**Expectations**
-
-- Every non-trivial piece of logic must have tests.
-- Hooks must test:
-  - success
-  - loading
-  - error paths
-- High coverage on:
-  - `core/api`
-  - `core/firebase`
-  - `features/*/hooks`
-  - `features/*/utils`
-
-### 8.2 Shared Test Utilities (`/tests`)
-
-```txt
-tests/
-  setup/
-    jest.setup.ts
-    msw.server.ts     # if using MSW
-  utils/
-    renderWithProviders.tsx
-  fixtures/
-    user.ts
-```
-
-### 8.3 E2E Tests (Playwright)
-
-Purpose: **thin smoke + core flows only**.
-
-Location:
+### E2E (Playwright)
 
 ```txt
 e2e/
   tests/
-    smoke.spec.ts     # app boots, basic UI loads
-    auth.spec.ts      # login/logout flow
+    smoke.spec.ts
+    auth.spec.ts
   playwright.config.ts
 ```
 
-**Rules**
+Rules:
 
-- Keep E2E small, stable, easy to maintain.
-- Avoid over-testing UI details.
-
----
-
-## 9. AI Collaboration Guide
-
-To ensure high-quality output from AI during development:
-
-### Always provide:
-
-1. **Context**
-   - This is a Next.js + TypeScript project.
-   - Architecture uses `core/`, `features/`, React Query, Zustand, Firebase wrappers.
-
-2. **Goal**
-   - What you're adding/changing.
-
-3. **File paths**
-   - Include only relevant files.
-
-4. **Constraints**
-   - "Use TypeScript"
-   - "Follow my feature-based architecture"
-   - "Put server actions in features/<feature>/serverActions"
-   - "Use React Query for server data"
-   - "Use core/firebase wrappers, never Firebase directly"
-
-5. **Testing requirement**
-   - Always request:
-     - colocated Jest tests for any new or changed logic
-     - update E2E tests if core flows change
-
-### Example prompt
-
-> I’m working on `features/profile` in a Next.js + TS project with React Query + Firebase (in core/firebase).  
-> I need:  
-> - a React Query hook `useProfileQuery(id)`  
-> - a server action `updateProfile`  
-> - colocated Jest tests for both  
-> - and update `e2e/tests/auth.spec.ts` if needed  
-> Here are my relevant files.  
-> Follow the project architecture.
+- Only test key flows  
+- Keep selectors simple and stable  
 
 ---
 
-## 10. Quality Gates (CI/CD)
+## 8. Development Guide: Components & Page Patterns
 
-- Lint must pass
-- Type-check must pass
-- Jest tests must pass
-- E2E tests must pass
+### Page-Level Hook Pattern
+
+**Rule**: All business logic for a page must live in a dedicated hook. The UI component should be primarily presentational.
+
+#### Pattern Structure
+
+Each page follows this pattern:
+
+```typescript
+// app/home/page.tsx (Next.js route)
+'use client';
+
+import { useHomePage } from '@/features/home/hooks/useHomePage';
+
+export default function HomePage() {
+  const homePage = useHomePage();
+  
+  return <HomePageView {...homePage} />;
+}
+```
+
+```typescript
+// features/home/hooks/useHomePage.ts
+export function useHomePage() {
+  // All business logic lives here
+  const { data, isLoading } = useHomeData();
+  const { handleRefresh, handleItemClick } = useHomeActions();
+  
+  // Can compose other hooks
+  const router = useRouter();
+  const analytics = useAnalytics();
+  
+  return {
+    // Expose only what the UI needs
+    data,
+    isLoading,
+    onRefresh: handleRefresh,
+    onItemClick: handleItemClick,
+  };
+}
+```
+
+```typescript
+// features/home/components/HomePageView.tsx
+interface HomePageViewProps {
+  data: HomeData[];
+  isLoading: boolean;
+  onRefresh: () => void;
+  onItemClick: (id: string) => void;
+}
+
+export function HomePageView({ data, isLoading, onRefresh, onItemClick }: HomePageViewProps) {
+  // Pure presentation logic only
+  // No business logic, no data fetching, no side effects
+  return (
+    <div>
+      {isLoading ? <LoadingSpinner /> : <DataList data={data} onItemClick={onItemClick} />}
+    </div>
+  );
+}
+```
+
+#### Rules
+
+1. **Page hook naming**: `use<PageName>Page` (e.g., `useHomePage`, `useProfilePage`)
+2. **Hook location**: Page hooks live in `features/<feature>/hooks/` or `app/<page>/hooks/` if page-specific
+3. **Business logic**: All data fetching, state management, side effects, and business rules go in the hook
+4. **UI components**: Should be pure presentational components that receive props and render
+5. **Hook composition**: Page hooks can compose other hooks (React Query hooks, feature hooks, utility hooks)
+6. **Exposed interface**: The hook should expose a clean, typed interface of only what the UI needs
+
+#### What Goes Where
+
+**In the Hook (`useHomePage`):**
+- ✅ Data fetching (React Query hooks)
+- ✅ State management (local state, derived state)
+- ✅ Event handlers with business logic
+- ✅ Side effects (navigation, analytics, etc.)
+- ✅ Data transformations
+- ✅ Validation logic
+- ✅ Error handling
+
+**In the UI Component (`HomePageView`):**
+- ✅ Rendering logic
+- ✅ Conditional rendering based on props
+- ✅ Layout and styling
+- ✅ Simple prop forwarding to child components
+- ❌ No data fetching
+- ❌ No business logic
+- ❌ No side effects (except UI-only effects like animations)
+
+### Component Writing Guidelines
+
+#### Component Reusability Principle
+
+**Default to shared components**: Always check if a component already exists in `components/ui/` or `components/common/` before building a new one.
+
+**Shared components for common UI:**
+- ✅ Buttons, Cards, Inputs, Lists, Modals, etc. → `components/ui/`
+- ✅ Multi-feature shared components (e.g., Header, Footer, Navigation) → `components/common/`
+- ✅ These should be built once and reused across all features for consistency
+
+**Feature-specific components only when:**
+- ❌ The component contains business logic specific to one feature
+- ❌ The component is so unique to a feature that it won't be reused elsewhere
+- ❌ The component requires feature-specific hooks or data structures that can't be abstracted
+
+**Decision process:**
+1. Need a Button? → Check `components/ui/Button.tsx` first
+2. Need a Card? → Check `components/ui/Card.tsx` first
+3. Need a ProductCard? → If it's just a styled card, extend `components/ui/Card.tsx`
+4. Need a ProductCard with product-specific business logic? → `features/products/components/ProductCard.tsx`
+
+**Rule**: When in doubt, start with a shared component. It's easier to move a component from `features/` to `components/` later than to duplicate and maintain multiple versions.
+
+#### Shared Components (`components/ui` and `components/common`)
+
+- **Pure presentational components**
+- **Reusable across features**
+- **Well-typed props interfaces**
+- **No feature-specific logic**
+- **Can accept render props or children for flexibility**
+
+#### Feature Components (`features/<feature>/components`)
+
+- **Feature-specific UI components**
+- **Can use feature hooks internally if needed**
+- **Still prefer presentational when possible**
+- **Can be composed by page-level hooks**
+
+#### Example: Reusable Component
+
+```typescript
+// components/ui/Button.tsx
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary';
+  disabled?: boolean;
+}
+
+export function Button({ children, onClick, variant = 'primary', disabled }: ButtonProps) {
+  return (
+    <button onClick={onClick} disabled={disabled} className={cn(styles.base, styles[variant])}>
+      {children}
+    </button>
+  );
+}
+```
+
+### Testing Page Patterns
+
+When testing pages:
+
+1. **Test the hook** (`useHomePage.test.ts`) – Test all business logic
+2. **Test the view component** (`HomePageView.test.tsx`) – Test rendering and prop handling
+3. **Test integration** – Test the page route renders correctly
+
+```typescript
+// useHomePage.test.ts
+describe('useHomePage', () => {
+  it('fetches and returns home data', () => {
+    const { result } = renderHook(() => useHomePage());
+    expect(result.current.data).toBeDefined();
+  });
+  
+  it('handles refresh correctly', () => {
+    const { result } = renderHook(() => useHomePage());
+    act(() => {
+      result.current.onRefresh();
+    });
+    // Assert refresh behavior
+  });
+});
+```
 
 ---
 
-## 11. New Project Setup Checklist
+## 9. Quality Gates (CI/CD)
 
-- [ ] Scaffold Next.js with TypeScript
-- [ ] Install Tailwind + shadcn
-- [ ] Create the folder structure
-- [ ] Implement `core/query`, `core/state`, `core/firebase`
-- [ ] Add `tests/setup/jest.setup.ts`
-- [ ] Add example test in `features/example`
-- [ ] Configure Playwright + first smoke test
-- [ ] Add env handling via `core/env`
-- [ ] Create first feature module
+- Lint must pass  
+- Type-check must pass  
+- Jest tests must pass  
+- Playwright tests must pass (optional)  
+- Production build succeeds  
+
+---
+
+## 10. New Web Project Setup Checklist
+
+- [ ] Scaffold Next.js project with TypeScript  
+- [ ] Install Tailwind CSS and shadcn/ui  
+- [ ] Create folder structure  
+- [ ] Implement core/query with QueryClient  
+- [ ] Implement core/firebase and test connection  
+- [ ] Setup Jest + RTL with `tests/setup/jest.setup.ts`  
+- [ ] Add `renderWithProviders.tsx`  
+- [ ] Add example feature module  
+- [ ] Add Playwright with a smoke test  
+- [ ] Commit `project-initialisation.web.md`  
+
+---
+
+## 11. Optional Tools & LLM Instructions
+
+For any tool, library, or setup step described as **optional** in this document (e.g., Zustand, utility-first styling), the LLM should:
+
+1. **Ask the user** whether the optional tool should be added or initialized before proceeding
+2. **Not assume** that optional tools should be included by default
+3. **Wait for confirmation** before installing dependencies or creating configuration files for optional tools
+
+Examples of optional tools mentioned in this document:
+- Zustand for global state (Section 1, Section 4)
+- Zustand setup in `core/state/` (Section 1, Section 2)
+- MSW for testing (Section 7)
+
+### Code Writing Rules File Setup
+
+**Rule**: The LLM must ensure that the code-writing-rules.md file is available as a Cursor rule at `.cursor/rules/RULE.md`. This file contains essential guidelines for:
+- Component reusability principles
+- Page-level hook patterns
+- useEffect usage rules
+- Test file placement
+- TypeScript guidelines
+- Code organization
+
+**Setup Process:**
+
+1. **Check if the rule exists**: First, check if `.cursor/rules/RULE.md` already exists in the project
+2. **If it doesn't exist, create it**: The LLM should create the rule file directly in `.cursor/rules/`:
+   ```
+   .cursor/rules/
+     RULE.md
+   ```
+3. **Fetch the content**: Attempt to fetch the content from the GitHub repository:
+   - **GitHub Repository**: `https://github.com/ClassyD/md-cook-books`
+   - **Raw File URL**: `https://raw.githubusercontent.com/ClassyD/md-cook-books/main/engineering/code-writing-rules.md`
+4. **If GitHub access fails**: If the LLM cannot access the GitHub URL or fetch the file:
+   - **Ask the user** to provide the code-writing-rules.md file
+   - Request either:
+     - The raw content of the file
+     - Or ask the user to manually add it to `.cursor/rules/RULE.md`
+5. **Create the RULE.md file**: Once the content is available, create the file with:
+   - Frontmatter metadata (optional, can be added later via Cursor settings):
+     ```markdown
+     ---
+     description: "Code writing rules and guidelines for React/React Native development"
+     alwaysApply: true
+     ---
+     ```
+   - The full content from the code-writing-rules.md file
+
+**Reference**: [Cursor Rules Documentation](https://cursor.com/docs/context/rules#rule-folder-structure)
 
 ---
